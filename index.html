@@ -1,95 +1,157 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Gate Pass Bulk Entry</title>
 
 <style>
-body { font-family: system-ui; margin:0; background:#f4f6fb; }
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, sans-serif;
+  background: #f4f6fb;
+}
+
 header {
-  display:flex; gap:8px; padding:10px;
-  background:#0f172a; color:white;
+  display: flex;
+  gap: 8px;
+  padding: 10px;
+  background: #0f172a;
+  color: white;
 }
-input, select {
-  padding:10px; font-size:16px; width:100%;
+
+select, input {
+  width: 100%;
+  padding: 10px;
+  font-size: 15px;
+  border-radius: 8px;
+  border: 1px solid #cbd5e1;
 }
-table { width:100%; }
-td { padding:4px; }
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+td {
+  padding: 4px;
+}
+
 button {
-  padding:14px; font-size:16px;
-  border:none; border-radius:8px;
+  padding: 14px;
+  font-size: 16px;
+  border-radius: 10px;
+  border: none;
+  cursor: pointer;
 }
-.add { background:#2563eb; color:white; }
-.save { background:#16a34a; color:white; width:100%; }
-.remove { background:#dc2626; color:white; }
+
+.add {
+  margin: 10px;
+  width: calc(100% - 20px);
+  background: #2563eb;
+  color: white;
+}
+
+.save {
+  background: #16a34a;
+  color: white;
+  width: 100%;
+}
+
+.remove {
+  background: #dc2626;
+  color: white;
+}
+
 footer {
-  position:sticky; bottom:0;
-  background:white; padding:10px;
+  position: sticky;
+  bottom: 0;
+  padding: 10px;
+  background: white;
+  box-shadow: 0 -4px 10px rgba(0,0,0,0.08);
 }
 </style>
 </head>
 
 <body>
 
+<!-- TOP BAR -->
 <header>
   <select id="category">
     <option value="OUTGOING">📤 OUTGOING</option>
     <option value="INCOMING">📥 INCOMING</option>
   </select>
-  <input type="date" id="date">
+
+  <input type="date" id="date" />
 </header>
 
+<!-- ENTRY TABLE -->
 <table>
   <tbody id="rows"></tbody>
 </table>
 
+<!-- ADD ROW -->
 <button class="add" onclick="addRow()">➕ Add Row</button>
 
+<!-- SAVE -->
 <footer>
   <button class="save" onclick="saveAll()">💾 SAVE ALL</button>
 </footer>
 
 <script>
-/************ CONFIG ************/
-const API = "https://script.google.com/macros/s/AKfycbyfrmKuiVPdhAEX9FB9I27Dr2TaP7BQrUMA4cG9iNjHIyIL4xaBOMfc0EUWpMxGSo5Z/exec"; // 👈 paste URL
+/* ================= CONFIG ================= */
+const API = "https://script.google.com/macros/s/AKfycbyfrmKuiVPdhAEX9FB9I27Dr2TaP7BQrUMA4cG9iNjHIyIL4xaBOMfc0EUWpMxGSo5Z/exec"; // 👈 replace
+let master = { party: [], particulars: [], vehicle: [] };
 
-let master = {};
-
+/* ================= INIT ================= */
 document.getElementById("date").value =
-  new Date().toISOString().slice(0,10);
+  new Date().toISOString().slice(0, 10);
 
-/************ LOAD MASTER ************/
-fetch(API + "?action=master", { method:"POST" })
-  .then(r => r.json())
-  .then(d => {
-    master = d;
+/* ================= LOAD MASTER DATA ================= */
+fetch(`${API}?action=master`)
+  .then(res => res.json())
+  .then(data => {
+    master = data;
     addRow();
+  })
+  .catch(err => {
+    alert("Failed to load Master Data");
+    console.error(err);
   });
 
+/* ================= ADD ROW ================= */
 function addRow() {
   const tr = document.createElement("tr");
+
   tr.innerHTML = `
     <td><input placeholder="Gate Pass"></td>
-    <td>${select(master.party)}</td>
-    <td>${select(master.particulars)}</td>
+    <td>${dropdown(master.party)}</td>
+    <td>${dropdown(master.particulars)}</td>
     <td><input type="number" placeholder="Qty"></td>
-    <td>${select(master.vehicle)}</td>
+    <td>${dropdown(master.vehicle)}</td>
     <td><input type="time"></td>
     <td><button class="remove" onclick="this.closest('tr').remove()">✖</button></td>
   `;
+
   document.getElementById("rows").appendChild(tr);
 }
 
-function select(arr) {
-  return `<select>${arr.map(v=>`<option>${v}</option>`).join("")}</select>`;
+/* ================= DROPDOWN ================= */
+function dropdown(arr) {
+  return `
+    <select>
+      ${arr.map(v => `<option value="${v}">${v}</option>`).join("")}
+    </select>
+  `;
 }
 
-/************ SAVE ************/
+/* ================= SAVE ALL ================= */
 function saveAll() {
   const trs = [...document.querySelectorAll("#rows tr")];
 
-  const entries = trs.map(r => {
-    const c = r.querySelectorAll("input,select");
+  const entries = trs.map(tr => {
+    const c = tr.querySelectorAll("input, select");
     return {
       gatePass: c[0].value,
       party: c[1].value,
@@ -100,21 +162,29 @@ function saveAll() {
     };
   }).filter(e => e.qty);
 
-  fetch(API + "?action=save", {
-    method:"POST",
-    body: JSON.stringify({
-      category: category.value,
-      date: date.value,
-      defaultTime: new Date().toTimeString().slice(0,5),
-      entries
+  if (!entries.length) {
+    alert("No valid rows to save");
+    return;
+  }
+
+  const payload = encodeURIComponent(JSON.stringify({
+    category: category.value,
+    date: date.value,
+    defaultTime: new Date().toTimeString().slice(0,5),
+    entries
+  }));
+
+  fetch(`${API}?action=save&payload=${payload}`)
+    .then(res => res.json())
+    .then(result => {
+      alert(`✅ Saved ${result.saved} entries`);
+      document.getElementById("rows").innerHTML = "";
+      addRow();
     })
-  })
-  .then(r=>r.json())
-  .then(res=>{
-    alert(`✅ Saved ${res.saved} entries`);
-    rows.innerHTML="";
-    addRow();
-  });
+    .catch(err => {
+      alert("Save failed");
+      console.error(err);
+    });
 }
 </script>
 
