@@ -1,171 +1,161 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Gate Pass Bulk Entry</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Gate Pass Entry</title>
 
 <style>
-* { box-sizing: border-box; }
 body {
   margin: 0;
-  font-family: system-ui, -apple-system, sans-serif;
-  background: #f4f6fb;
+  font-family: system-ui, sans-serif;
+  background: #f2f4f8;
 }
 
-header {
+/* TOP BAR */
+.top {
   display: flex;
-  gap: 8px;
-  padding: 10px;
+  gap: 10px;
+  padding: 12px;
   background: #0f172a;
-  color: white;
+}
+.top select, .top input {
+  flex: 1;
+  padding: 12px;
+  font-size: 16px;
+  border-radius: 12px;
+  border: none;
 }
 
-select, input {
+/* CARD */
+.card {
+  background: white;
+  margin: 12px;
+  padding: 14px;
+  border-radius: 16px;
+  box-shadow: 0 8px 20px rgba(0,0,0,.08);
+}
+.card label {
+  font-size: 12px;
+  color: #64748b;
+}
+.card input, .card select {
   width: 100%;
-  padding: 10px;
-  font-size: 15px;
-  border-radius: 8px;
+  margin-top: 4px;
+  margin-bottom: 10px;
+  padding: 12px;
+  font-size: 16px;
+  border-radius: 10px;
   border: 1px solid #cbd5e1;
 }
 
-table {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-td {
-  padding: 4px;
-}
-
-button {
-  padding: 14px;
-  font-size: 16px;
-  border-radius: 10px;
-  border: none;
-  cursor: pointer;
-}
-
+/* BUTTONS */
 .add {
-  margin: 10px;
-  width: calc(100% - 20px);
+  margin: 12px;
+  padding: 16px;
+  width: calc(100% - 24px);
+  font-size: 18px;
+  border-radius: 14px;
   background: #2563eb;
   color: white;
+  border: none;
 }
-
 .save {
+  margin: 12px;
+  padding: 18px;
+  width: calc(100% - 24px);
+  font-size: 20px;
+  border-radius: 16px;
   background: #16a34a;
   color: white;
-  width: 100%;
+  border: none;
 }
-
 .remove {
   background: #dc2626;
   color: white;
-}
-
-footer {
-  position: sticky;
-  bottom: 0;
   padding: 10px;
-  background: white;
-  box-shadow: 0 -4px 10px rgba(0,0,0,0.08);
+  border-radius: 10px;
+  border: none;
+  width: 100%;
 }
 </style>
 </head>
 
 <body>
 
-<!-- TOP BAR -->
-<header>
+<!-- TOP -->
+<div class="top">
   <select id="category">
     <option value="OUTGOING">📤 OUTGOING</option>
     <option value="INCOMING">📥 INCOMING</option>
   </select>
+  <input type="date" id="date">
+</div>
 
-  <input type="date" id="date" />
-</header>
+<div id="cards"></div>
 
-<!-- ENTRY TABLE -->
-<table>
-  <tbody id="rows"></tbody>
-</table>
-
-<!-- ADD ROW -->
-<button class="add" onclick="addRow()">➕ Add Row</button>
-
-<!-- SAVE -->
-<footer>
-  <button class="save" onclick="saveAll()">💾 SAVE ALL</button>
-</footer>
+<button class="add" onclick="addCard()">➕ Add Entry</button>
+<button class="save" onclick="saveAll()">💾 SAVE ALL</button>
 
 <script>
-/* ================= CONFIG ================= */
 const API = "https://script.google.com/macros/s/AKfycbyfrmKuiVPdhAEX9FB9I27Dr2TaP7BQrUMA4cG9iNjHIyIL4xaBOMfc0EUWpMxGSo5Z/exec"; // 👈 replace
-let master = { party: [], particulars: [], vehicle: [] };
+let master = {};
 
-/* ================= INIT ================= */
-document.getElementById("date").value =
-  new Date().toISOString().slice(0, 10);
+date.value = new Date().toISOString().slice(0,10);
 
-/* ================= LOAD MASTER DATA ================= */
+/* LOAD MASTER */
 fetch(`${API}?action=master`)
-  .then(res => res.json())
-  .then(data => {
-    master = data;
-    addRow();
-  })
-  .catch(err => {
-    alert("Failed to load Master Data");
-    console.error(err);
+  .then(r=>r.json())
+  .then(d=>{
+    master=d;
+    addCard();
   });
 
-/* ================= ADD ROW ================= */
-function addRow() {
-  const tr = document.createElement("tr");
+function addCard() {
+  const div = document.createElement("div");
+  div.className = "card";
+  div.innerHTML = `
+    <label>Gate Pass No.</label>
+    <input placeholder="Optional">
 
-  tr.innerHTML = `
-    <td><input placeholder="Gate Pass"></td>
-    <td>${dropdown(master.party)}</td>
-    <td>${dropdown(master.particulars)}</td>
-    <td><input type="number" placeholder="Qty"></td>
-    <td>${dropdown(master.vehicle)}</td>
-    <td><input type="time"></td>
-    <td><button class="remove" onclick="this.closest('tr').remove()">✖</button></td>
+    <label>Party</label>
+    ${dd(master.party)}
+
+    <label>Particulars</label>
+    ${dd(master.particulars)}
+
+    <label>Quantity</label>
+    <input type="number" placeholder="Qty">
+
+    <label>Vehicle</label>
+    ${dd(master.vehicle)}
+
+    <label>Time</label>
+    <input type="time">
+
+    <button class="remove" onclick="this.parentElement.remove()">❌ Remove</button>
   `;
-
-  document.getElementById("rows").appendChild(tr);
+  cards.appendChild(div);
 }
 
-/* ================= DROPDOWN ================= */
-function dropdown(arr) {
-  return `
-    <select>
-      ${arr.map(v => `<option value="${v}">${v}</option>`).join("")}
-    </select>
-  `;
+function dd(arr=[]) {
+  return `<select>${arr.map(v=>`<option>${v}</option>`).join("")}</select>`;
 }
 
-/* ================= SAVE ALL ================= */
 function saveAll() {
-  const trs = [...document.querySelectorAll("#rows tr")];
-
-  const entries = trs.map(tr => {
-    const c = tr.querySelectorAll("input, select");
+  const list = [...document.querySelectorAll(".card")];
+  const entries = list.map(c=>{
+    const f = c.querySelectorAll("input,select");
     return {
-      gatePass: c[0].value,
-      party: c[1].value,
-      particular: c[2].value,
-      qty: c[3].value,
-      vehicle: c[4].value,
-      time: c[5].value
+      gatePass: f[0].value,
+      party: f[1].value,
+      particular: f[2].value,
+      qty: f[3].value,
+      vehicle: f[4].value,
+      time: f[5].value
     };
-  }).filter(e => e.qty);
+  }).filter(e=>e.qty);
 
-  if (!entries.length) {
-    alert("No valid rows to save");
-    return;
-  }
+  if(!entries.length){ alert("No entries"); return; }
 
   const payload = encodeURIComponent(JSON.stringify({
     category: category.value,
@@ -175,15 +165,11 @@ function saveAll() {
   }));
 
   fetch(`${API}?action=save&payload=${payload}`)
-    .then(res => res.json())
-    .then(result => {
-      alert(`✅ Saved ${result.saved} entries`);
-      document.getElementById("rows").innerHTML = "";
-      addRow();
-    })
-    .catch(err => {
-      alert("Save failed");
-      console.error(err);
+    .then(r=>r.json())
+    .then(res=>{
+      alert(`✅ Saved ${res.saved}`);
+      cards.innerHTML="";
+      addCard();
     });
 }
 </script>
